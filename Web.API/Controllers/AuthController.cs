@@ -1,4 +1,5 @@
 ﻿using Business.Abstract;
+using Core.Utilities.Results;
 using Entities.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +18,7 @@ namespace WebAPI.Controllers
             _authService = authService;
             _userService = userService;
         }
-        
+
         [HttpPost("login")]
         public ActionResult Login(UserForLoginDto userForLoginDto)
         {
@@ -30,7 +31,21 @@ namespace WebAPI.Controllers
             var result = _authService.CreateAccessToken(userToLogin.Data);
             if (result.Success)
             {
-                return Ok(result);
+                // Önce eski çerezi sil
+                Response.Cookies.Delete("AuthToken");
+
+                // Yeni çerezi ekle
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false, // HTTP için false, production'da true olmalı
+                    SameSite = SameSiteMode.Strict,
+                    Expires = result.Data.Expiration
+                };
+
+                Response.Cookies.Append("AuthToken", result.Data.Token, cookieOptions);
+
+                return Ok(new { message = "Login successful" });
             }
 
             return BadRequest(result.Message);
@@ -39,20 +54,35 @@ namespace WebAPI.Controllers
         [HttpPost("register")]
         public ActionResult Register(UserForRegisterDto userForRegisterDto)
         {
-            //var userExists = _authService.UserExists(userForRegisterDto.Email);
-            //if (!userExists.Success)
-            //{
-            //    return BadRequest(userExists.Message);
-            //}
-
             var registerResult = _authService.Register(userForRegisterDto, userForRegisterDto.Password);
             var result = _authService.CreateAccessToken(registerResult.Data);
             if (result.Success)
             {
-                return Ok(result);
+                // Önce eski çerezi sil
+                Response.Cookies.Delete("AuthToken");
+
+                // Yeni çerezi ekle
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false, // HTTP için false, production'da true olmalı
+                    SameSite = SameSiteMode.Strict,
+                    Expires = result.Data.Expiration
+                };
+
+                Response.Cookies.Append("AuthToken", result.Data.Token, cookieOptions);
+
+                return Ok(new { message = "Registration successful" });
             }
 
             return BadRequest(result.Message);
+        }
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            Response.Cookies.Delete("AuthToken");
+            
+            return Ok(new { message = "Logged out successfully" });
         }
 
         //[HttpGet("getuserdetails")]

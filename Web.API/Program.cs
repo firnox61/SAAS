@@ -74,7 +74,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseMiddleware<JwtCookieMiddleware>();
+//authentication gelecek
 app.UseAuthorization();
 
 app.MapControllers();
